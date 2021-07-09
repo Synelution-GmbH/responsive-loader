@@ -51,6 +51,12 @@ class SharpAdapter {
           quality: options.quality,
         })
       }
+      if (mime === "image/png") {
+        // @ts-ignore
+        resized = resized.png({
+          quality: options.quality,
+        })
+      }
       // rotate
       if (options.rotate && options.rotate !== 0) {
         resized = resized.rotate(options.rotate)
