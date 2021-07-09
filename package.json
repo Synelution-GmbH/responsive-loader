@@ -1,5 +1,5 @@
 {
-  "name": "@snyleution/responsive-loader",
+  "name": "@synelution/responsive-loader",
   "version": "3.0.0-2",
   "description": "A webpack loader for responsive images",
   "main": "lib/cjs.js",
