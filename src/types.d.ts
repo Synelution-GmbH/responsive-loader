@@ -48,7 +48,7 @@ export interface AdapterImplementation {
   metadata: () => Promise<{ width: number; height: number }>
   resize: (config: { width: number; mime: string; options: Options }) => Promise<AdapterResizeResponse>
 }
-export type AdapterResizeResponse = { data: Buffer; width: number; height: number }
+export type AdapterResizeResponse = { data: Buffer; width: any ; height: any  }
 export type CreateFile = {
   loaderContext: LoaderContext
   data: Buffer
@@ -76,5 +76,6 @@ export interface TransformParams {
   mime: MimeType
   sizes: number[]
   esModule: boolean
-  adapterOptions: Options & ImageOptions
+  adapterOptions: Options & ImageOptions,
+  originalImage: any
 }

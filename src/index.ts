@@ -121,6 +121,7 @@ export default function loader(this: LoaderContext, content: Buffer): void {
    * The full config is passed to the adapter, later sources' properties overwrite earlier ones.
    */
   const adapterOptions = Object.assign({}, options, imageOptions)
+  const originalImage = createFile({ data: content, width: 'o', height: 'o' })
 
   const transformParams: TransformParams = {
     adapterModule: options.adapter,
@@ -132,6 +133,7 @@ export default function loader(this: LoaderContext, content: Buffer): void {
     mime,
     sizes,
     esModule: options.esModule,
+    originalImage
   }
   orchestrate({ cacheOptions, transformParams })
     .then((result) => loaderCallback(null, result))
@@ -166,6 +168,7 @@ export async function transform({
   placeholderSize,
   adapterOptions,
   esModule,
+  originalImage
 }: TransformParams): Promise<string> {
   const adapter: Adapter = adapterModule || require('./adapters/jimp')
   const img = adapter(resourcePath)
@@ -188,7 +191,7 @@ export async function transform({
   return `${esModule ? 'export default' : 'module.exports ='} {
         srcSet: ${srcset},
         images: [${images}],
-        src: ${firstImage.path},
+        src: ${originalImage.path},
         toString: function(){return ${firstImage.path}},
         ${placeholder ? 'placeholder: ' + placeholder + ',' : ''}
         width: ${firstImage.width},
