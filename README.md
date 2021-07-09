@@ -11,7 +11,7 @@ A webpack loader for responsive images. Creates multiple images from one source 
 ### With jimp
 
 ```
-npm install responsive-loader jimp --save-dev
+npm install @synelution/responsive-loader jimp --save-dev
 ```
 
 Per default, responsive-loader uses [jimp](https://github.com/oliver-moran/jimp) to transform images. which needs to be installed alongside responsive-loader. Because jimp is written entirely in JavaScript and doesn't have any native dependencies it will work anywhere. The main drawback is that it's pretty slow.
@@ -19,7 +19,7 @@ Per default, responsive-loader uses [jimp](https://github.com/oliver-moran/jimp)
 ### With sharp
 
 ```
-npm install responsive-loader sharp --save-dev
+npm install @synelution/responsive-loader sharp --save-dev
 ```
 
 For [super-charged performance](http://sharp.dimens.io/en/stable/performance/), responsive-loader also works with [sharp](https://github.com/lovell/sharp). It's recommended to use sharp if you have lots of images to transform, and/or need to generate webp/avif images.
@@ -57,16 +57,16 @@ module.exports = {
       {
         test: /\.(jpe?g|png|webp)$/i,
         use: {
-          loader: "responsive-loader",
+          loader: 'responsive-loader',
           options: {
             // If you want to enable sharp support:
-            adapter: require("responsive-loader/sharp"),
+            adapter: require('responsive-loader/sharp'),
           },
         },
       },
     ],
   },
-}
+};
 ```
 
 Then import images in your JavaScript files:
@@ -108,19 +108,19 @@ Or use it in CSS (only the first resized image will be used, if you use multiple
 
 ```css
 .myImage {
-  background: url("myImage.jpg?size=1140");
+  background: url('myImage.jpg?size=1140');
 }
 
 @media (max-width: 480px) {
   .myImage {
-    background: url("myImage.jpg?size=480");
+    background: url('myImage.jpg?size=480');
   }
 }
 ```
 
 ```js
 // Outputs placeholder image as a data URI, and three images with 100, 200, and 300px widths
-const responsiveImage = require("myImage.jpg?placeholder=true&sizes[]=100,sizes[]=200,sizes[]=300")
+const responsiveImage = require('myImage.jpg?placeholder=true&sizes[]=100,sizes[]=200,sizes[]=300');
 
 // responsiveImage.placeholder => 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAIBAQE…'
 ReactDOM.render(
@@ -128,14 +128,14 @@ ReactDOM.render(
     style={{
       height: responsiveImage.height,
       width: responsiveImage.width,
-      backgroundSize: "cover",
+      backgroundSize: 'cover',
       backgroundImage: 'url("' + responsiveImage.placeholder + '")',
     }}
   >
     <img src={responsiveImage.src} srcSet={responsiveImage.srcSet} />
   </div>,
   el
-)
+);
 ```
 
 You can also use the following notation:
@@ -233,7 +233,7 @@ module.exports = {
         test: /\.(jpe?g|png)$/i,
         use: [
           {
-            loader: "responsive-loader",
+            loader: 'responsive-loader',
             options: {
               esModule: true,
             },
@@ -242,7 +242,7 @@ module.exports = {
       },
     ],
   },
-}
+};
 ```
 
 ### Writing Your Own Adapter
