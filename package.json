@@ -19,7 +19,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/dazuaz/responsive-loader.git"
+    "url": "git+https://github.com/Synelution-GmbH/responsive-loader.git"
   },
   "keywords": [
     "webpack",
