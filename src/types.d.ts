@@ -50,8 +50,8 @@ export interface AdapterImplementation {
 }
 export type AdapterResizeResponse = {
   data: string | Buffer;
-  width: number;
-  height: number;
+  width: any;
+  height: any;
 };
 
 export interface TransformParams {
@@ -68,4 +68,5 @@ export interface TransformParams {
   mime: MimeType;
   sizes: number[];
   adapterOptions: Options & ImageOptions;
+  originalImage: any;
 }
