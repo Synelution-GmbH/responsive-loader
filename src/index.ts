@@ -170,7 +170,7 @@ export async function transform({
   outputPlaceholder,
   placeholderSize,
   adapterOptions,
-  originalImage,
+  // originalImage,
 }: TransformParams): Promise<string> {
   const adapter: Adapter = adapterModule || require('./adapters/sharp');
   const img = adapter(resourcePath);
