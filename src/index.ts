@@ -1,19 +1,23 @@
-import { parseQuery, getOptions, interpolateName } from 'loader-utils'
-import { validate } from 'schema-utils'
-import * as schema from './schema.json'
-import { parseOptions, getOutputAndPublicPath, createPlaceholder } from './utils'
-import { cache } from './cache'
+import * as schema from './schema.json';
+import { validate } from 'schema-utils';
+import { JSONSchema7 } from 'schema-utils/declarations/ValidationError';
+
+import { parseOptions, getOutputAndPublicPath, createPlaceholder } from './utils';
+import { cache } from './cache';
+import type { LoaderContext } from 'webpack';
+
+import { interpolateName } from 'loader-utils';
+import { parseQuery } from './parseQuery';
 
 import type {
   Adapter,
   Options,
   CacheOptions,
-  LoaderContext,
   AdapterImplementation,
   MimeType,
   AdapterResizeResponse,
   TransformParams,
-} from './types'
+} from './types';
 
 const DEFAULTS = {
   quality: 85,
@@ -27,7 +31,7 @@ const DEFAULTS = {
   cacheDirectory: false,
   cacheCompression: true,
   cacheIdentifier: '',
-}
+};
 
 /**
  * **Responsive Loader**
@@ -39,28 +43,28 @@ const DEFAULTS = {
  *
  * @return {loaderCallback} loaderCallback Result
  */
-export default function loader(this: LoaderContext, content: Buffer): void {
-  const loaderCallback = this.async()
+export default function loader(
+  this: LoaderContext<Options>,
+  content: string
+): void {
+  const loaderCallback = this.async();
   if (typeof loaderCallback == 'undefined') {
-    new Error('Responsive loader callback error')
-    return
+    new Error('Responsive loader callback error');
+    return;
   }
 
-  // Object representation of the query string
-  const parsedResourceQuery = this.resourceQuery ? parseQuery(this.resourceQuery) : {}
+  // Parsers the query string and options
+  const parsedResourceQuery = this.resourceQuery
+    ? parseQuery(this.resourceQuery)
+    : {};
 
   // Combines defaults, webpack options and query options,
-  // later sources' properties overwrite earlier ones.
-  const options: Options = Object.assign({}, DEFAULTS, getOptions(this), parsedResourceQuery)
+  const options = { ...DEFAULTS, ...this.getOptions(), ...parsedResourceQuery };
 
-  // @ts-ignore
-  validate(schema, options, { name: 'Responsive Loader' })
+  validate(schema as JSONSchema7, options, { name: 'Responsive Loader' });
 
-  /**
-   * Parses options and set defaults options
-   */
+  const outputContext = options.context || this.rootContext;
   const {
-    outputContext,
     mime,
     ext,
     name,
@@ -69,28 +73,30 @@ export default function loader(this: LoaderContext, content: Buffer): void {
     placeholderSize,
     imageOptions,
     cacheOptions,
-  } = parseOptions(this, options)
+  } = parseOptions(this.resourcePath, options);
 
   if (!mime) {
-    loaderCallback(new Error('No mime type for file with extension ' + ext + ' supported'))
-    return
+    loaderCallback(
+      new Error('No mime type for file with extension ' + ext + ' supported')
+    );
+    return;
   }
 
   const createFile = ({ data, width, height }: AdapterResizeResponse) => {
     const fileName = interpolateName(this, name, {
       context: outputContext,
-      content: data,
+      content: data.toString(),
     })
       .replace(/\[width\]/gi, width + '')
-      .replace(/\[height\]/gi, height + '')
+      .replace(/\[height\]/gi, height + '');
 
     const { outputPath, publicPath } = getOutputAndPublicPath(fileName, {
       outputPath: options.outputPath,
       publicPath: options.publicPath,
-    })
+    });
 
     if (options.emitFile) {
-      this.emitFile(outputPath, data, null)
+      this.emitFile(outputPath, data);
     }
 
     return {
@@ -98,14 +104,14 @@ export default function loader(this: LoaderContext, content: Buffer): void {
       path: publicPath,
       width: width,
       height: height,
-    }
-  }
+    };
+  };
 
   /**
    * Disable processing of images by this loader (useful in development)
    */
   if (options.disable) {
-    const { path } = createFile({ data: content, width: 100, height: 100 })
+    const { path } = createFile({ data: content, width: 100, height: 100 });
     loaderCallback(
       null,
       `${options.esModule ? 'export default' : 'module.exports ='} {
@@ -113,17 +119,15 @@ export default function loader(this: LoaderContext, content: Buffer): void {
         images: [{path:${path},width:100,height:100}],
         src: ${path},
         toString: function(){return ${path}}
-      };`
-    )
-    return
+      }`
+    );
+    return;
   }
-  /**
-   * The full config is passed to the adapter, later sources' properties overwrite earlier ones.
-   */
-  const adapterOptions = Object.assign({}, options, imageOptions)
-  const originalImage = createFile({ data: content, width: 'o', height: 'o' })
+  // The full config is passed to the adapter, later sources' properties overwrite earlier ones.
+  const adapterOptions = Object.assign({}, options, imageOptions);
+  const originalImage = createFile({ data: content, width: 'o', height: 'o' });
 
-  const transformParams: TransformParams = {
+  const transformParams = {
     adapterModule: options.adapter,
     resourcePath: this.resourcePath,
     adapterOptions,
@@ -132,80 +136,88 @@ export default function loader(this: LoaderContext, content: Buffer): void {
     placeholderSize,
     mime,
     sizes,
-    esModule: options.esModule,
-    originalImage
-  }
+    originalImage,
+  };
   orchestrate({ cacheOptions, transformParams })
     .then((result) => loaderCallback(null, result))
-    .catch((err) => loaderCallback(err))
+    .catch((err) => loaderCallback(err));
 }
 interface OrchestrateParams {
-  cacheOptions: CacheOptions
-  transformParams: TransformParams
+  cacheOptions: CacheOptions;
+  transformParams: TransformParams;
 }
 async function orchestrate(params: OrchestrateParams) {
   // use cached, or create new image.
-  let result
-  const { transformParams, cacheOptions } = params
+  let result;
+  const { transformParams, cacheOptions } = params;
 
   if (cacheOptions.cacheDirectory) {
-    result = await cache(cacheOptions, transformParams)
+    result = await cache(cacheOptions, transformParams);
   } else {
-    result = await transform(transformParams)
+    result = await transform(transformParams);
   }
 
-  return result
+  return result;
 }
 
 // Transform based on the parameters
 export async function transform({
   adapterModule,
-  createFile,
   resourcePath,
+  createFile,
   sizes,
   mime,
   outputPlaceholder,
   placeholderSize,
   adapterOptions,
-  esModule,
-  originalImage
+  originalImage,
 }: TransformParams): Promise<string> {
-  const adapter: Adapter = adapterModule || require('./adapters/jimp')
-  const img = adapter(resourcePath)
-  const results = await transformations({ img, sizes, mime, outputPlaceholder, placeholderSize, adapterOptions })
+  const adapter: Adapter = adapterModule || require('./adapters/sharp');
+  const img = adapter(resourcePath);
+  const results = await transformations({
+    img,
+    sizes,
+    mime,
+    outputPlaceholder,
+    placeholderSize,
+    adapterOptions,
+  });
 
-  let placeholder
-  let files
+  let placeholder;
+  let files;
 
   if (outputPlaceholder) {
-    files = results.slice(0, -1).map(createFile)
-    placeholder = createPlaceholder(results[results.length - 1], mime)
+    files = results.slice(0, -1).map(createFile);
+    placeholder = createPlaceholder(results[results.length - 1], mime);
   } else {
-    files = results.map(createFile)
+    files = results.map(createFile);
   }
 
-  const srcset = files.map((f) => f.src).join('+","+')
-  const images = files.map((f) => `{path: ${f.path},width: ${f.width},height: ${f.height}}`).join(',')
-  const firstImage = files[0]
+  const srcset = files.map((f) => f.src).join('+","+');
+  const images = files
+    .map((f) => `{path: ${f.path},width: ${f.width},height: ${f.height}}`)
+    .join(',');
+  // default to the biggest image
+  const defaultImage = files[files.length - 1];
 
-  return `${esModule ? 'export default' : 'module.exports ='} {
+  return `${adapterOptions.esModule ? 'export default' : 'module.exports ='} {
         srcSet: ${srcset},
         images: [${images}],
-        src: ${originalImage.path},
-        toString: function(){return ${firstImage.path}},
+        src: ${defaultImage.path},
+        toString: function(){return ${defaultImage.path}},
         ${placeholder ? 'placeholder: ' + placeholder + ',' : ''}
-        width: ${firstImage.width},
-        height: ${firstImage.height}
-      }`
+        width: ${defaultImage.width},
+        height: ${defaultImage.height}
+      }`;
 }
 
 interface TransformationParams {
-  img: AdapterImplementation
-  sizes: number[]
-  mime: MimeType
-  outputPlaceholder: boolean
-  placeholderSize: number
-  adapterOptions: Options
+  img: AdapterImplementation;
+  sizes: number[];
+  mime: MimeType;
+  outputPlaceholder: boolean;
+  placeholderSize: number;
+  adapterOptions: Options;
 }
 /**
  * **Run Transformations**
@@ -221,24 +233,24 @@ async function transformations({
   placeholderSize,
   adapterOptions,
 }: TransformationParams): Promise<AdapterResizeResponse[]> {
-  const metadata = await img.metadata()
-  const promises = []
-  const widthsToGenerate = new Set()
+  const metadata = await img.metadata();
+  const promises = [];
+  const widthsToGenerate = new Set();
 
   sizes.forEach((size) => {
-    const width = Math.min(metadata.width, size)
+    const width = Math.min(metadata.width, size);
     // Only resize images if they aren't an exact copy of one already being resized...
     if (!widthsToGenerate.has(width)) {
-      widthsToGenerate.add(width)
+      widthsToGenerate.add(width);
       promises.push(
         img.resize({
           width,
           mime,
           options: adapterOptions,
         })
-      )
+      );
     }
-  })
+  });
 
   if (outputPlaceholder) {
     promises.push(
@@ -247,8 +259,8 @@ async function transformations({
         options: adapterOptions,
         mime,
       })
-    )
+    );
   }
-  return Promise.all(promises)
+  return Promise.all(promises);
 }
-export const raw = true
+export const raw = true;

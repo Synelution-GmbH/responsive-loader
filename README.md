@@ -1,7 +1,6 @@
 # responsive-loader
 
 [![build][travis]][travis-url]
-[![npm][npm]][npm-url]
 [![node][node]][node-url]
 
 A webpack loader for responsive images. Creates multiple images from one source image, and returns a `srcset`. For more information on how to use `srcset`, read [Responsive Images](https://developer.mozilla.org/en-US/docs/Learn/HTML/Multimedia_and_embedding/Responsive_images). Browser support is [pretty good](http://caniuse.com/#search=srcset).
@@ -22,32 +21,7 @@ Per default, responsive-loader uses [jimp](https://github.com/oliver-moran/jimp)
 npm install @synelution/responsive-loader sharp --save-dev
 ```
 
-For [super-charged performance](http://sharp.dimens.io/en/stable/performance/), responsive-loader also works with [sharp](https://github.com/lovell/sharp). It's recommended to use sharp if you have lots of images to transform, and/or need to generate webp/avif images.
-
-If you want to use sharp, you need to configure responsive-loader to use its adapter:
-
-```diff
-module.exports = {
-  // ...
-  module: {
-    rules: [
-      {
-        test: /\.(jpe?g|png|webp)$/i,
-        use: {
-          loader: 'responsive-loader',
-          options: {
-+           adapter: require('responsive-loader/sharp')
-          }
-        }
-      }
-    ]
-  },
-}
-```
-
-## Usage
-
-Add a rule for loading responsive images to your webpack config:
+For [super-charged performance](http://sharp.dimens.io/en/stable/performance/) and webp and avif formats support, responsive-loader works with [sharp](https://github.com/lovell/sharp). It's recommended to use sharp if you have lots of images to transform.
 
 ```js
 module.exports = {
@@ -63,11 +37,72 @@ module.exports = {
             adapter: require('responsive-loader/sharp'),
           },
         },
+        type: 'javascript/auto',
       },
     ],
   },
 };
 ```
+
+### With jimp
+
+```
+npm install responsive-loader jimp --save-dev
+```
+
+Responsive-loader can be use with [jimp](https://github.com/oliver-moran/jimp) to transform images. which needs to be installed alongside responsive-loader. Because jimp is written entirely in JavaScript and doesn't have any native dependencies it will work anywhere. The main drawback is that it's pretty slow.
+
+If you want to use jimp, you need to configure responsive-loader to use its adapter:
+
+```diff
+module.exports = {
+  // ...
+  module: {
+    rules: [
+      {
+        test: /\.(png|jpe?g)$/,
+        use: [
+          {
+            loader: 'responsive-loader',
+            options: {
++               adapter: require('responsive-loader/jimp')
+            },
+          },
+        ],
+        type: 'javascript/auto',
+      }
+    ]
+  },
+}
+```
+
+### Typescript
+
+```typescript
+//declare a module to your type definitions files *.d.ts
+interface ResponsiveImageOutput {
+  src: string;
+  srcSet: string;
+  placeholder: string | undefined;
+  images: { path: string; width: number; height: number }[];
+  width: number;
+  height: number;
+  toString: () => string;
+}
+
+declare module '*!rl' {
+  const src: ResponsiveImageOutput;
+  export default src;
+}
+```
+
+```
+import responsiveImage from 'img/myImage.jpg?sizes[]=300,sizes[]=600,sizes[]=1024,sizes[]=2048!rl';
+import responsiveImageWebp from 'img/myImage.jpg?sizes[]=300,sizes[]=600,sizes[]=1024,sizes[]=2048&format=webp!rl';
+...
+```
+
+---
 
 Then import images in your JavaScript files:
 
@@ -78,8 +113,8 @@ import responsiveImageWebp from 'img/myImage.jpg?sizes[]=300,sizes[]=600,sizes[]
 // Outputs
 // responsiveImage.srcSet => '2fefae46cb857bc750fa5e5eed4a0cde-300.jpg 300w,2fefae46cb857bc750fa5e5eed4a0cde-600.jpg 600w,2fefae46cb857bc750fa5e5eed4a0cde-600.jpg 600w ...'
 // responsiveImage.images => [{height: 150, path: '2fefae46cb857bc750fa5e5eed4a0cde-300.jpg', width: 300}, {height: 300, path: '2fefae46cb857bc750fa5e5eed4a0cde-600.jpg', width: 600} ...]
-// responsiveImage.src => '2fefae46cb857bc750fa5e5eed4a0cde-300.jpg'
-// responsiveImage.toString() => '2fefae46cb857bc750fa5e5eed4a0cde-300.jpg'
+// responsiveImage.src => '2fefae46cb857bc750fa5e5eed4a0cde-2048.jpg'
+// responsiveImage.toString() => '2fefae46cb857bc750fa5e5eed4a0cde-2048.jpg'
 ...
   <picture>
     <source srcSet={responsiveImageWebp.srcSet} type='image/webp' sizes='(min-width: 1024px) 1024px, 100vw'/>
@@ -138,35 +173,34 @@ ReactDOM.render(
 );
 ```
 
-You can also use the following notation:
+You can also use [JSON5](https://json5.org/) notation:
 
 ```
-<source srcSet={require("./image.jpg?{sizes:[50,100,200,300,400,500,600,700,800], format: 'webp'}").srcSet} type="image/webp"/>
+<source srcSet={require('./image.jpg?{sizes:[50,100,200,300,400,500,600,700,800], format: "webp"}').srcSet} type='image/webp'/>
 ```
-
-More here https://github.com/webpack/loader-utils#parsequery
 
 ### Options
 
-| Option                      | Type                 | Default                | Description                                                                                                                                                                                                                                                                           |
-| --------------------------- | -------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `name`                      | `string`             | `[hash]-[width].[ext]` | Filename template for output files.                                                                                                                                                                                                                                                   |
-| `outputPath`                | `string \| Function` | `undefined`            | Configure a custom output path for your file                                                                                                                                                                                                                                          |
-| `publicPath`                | `string \| Function` | `undefined`            | Configure a custom public path for your file.                                                                                                                                                                                                                                         |
-| `context`                   | `string`             | `this.options.context` | Custom file context, defaults to webpack.config.js [context](https://webpack.js.org/configuration/entry-context/#context)                                                                                                                                                             |
-| `sizes`                     | `array`              | _original size_        | Specify all widths you want to use; if a specified size exceeds the original image's width, the latter will be used (i.e. images won't be scaled up). You may also declare a default `sizes` array in the loader options in your `webpack.config.js`.                                 |
-| `size`                      | `integer`            | _original size_        | Specify one width you want to use; if the specified size exceeds the original image's width, the latter will be used (i.e. images won't be scaled up)                                                                                                                                 |
-| `min`                       | `integer`            |                        | As an alternative to manually specifying `sizes`, you can specify `min`, `max` and `steps`, and the sizes will be generated for you.                                                                                                                                                  |
-| `max`                       | `integer`            |                        | See `min` above                                                                                                                                                                                                                                                                       |
-| `steps`                     | `integer`            | `4`                    | Configure the number of images generated between `min` and `max` (inclusive)                                                                                                                                                                                                          |
-| `quality`                   | `integer`            | `85`                   | JPEG and WEBP compression quality                                                                                                                                                                                                                                                     |
-| `format`                    | `string`             | _original format_      | Either `png` or `jpg`; use to convert to another format. `webp` and `avif` is also supported, but only by the sharp adapter                                                                                                                                                           |
-| `placeholder`               | `boolean`            | `false`                | A true or false value to specify wether to output a placeholder image as a data URI                                                                                                                                                                                                   |
-| `placeholderSize`           | `integer`            | `40`                   | A number value specifying the width of the placeholder image, if enabled with the option above                                                                                                                                                                                        |
-| `adapter`                   | `Adapter`            | JIMP                   | Specify which adapter to use. Can only be specified in the loader options.                                                                                                                                                                                                            |
-| `disable`                   | `boolean`            | `false`                | Disable processing of images by this loader (useful in development). `srcSet` and other attributes will still be generated but only for the original size. Note that the `width` and `height` attributes will both be set to `100` but the image will retain its original dimensions. |
-| **[`esModule`](#esmodule)** | `boolean`            | `false`                | Use ES modules syntax.                                                                                                                                                                                                                                                                |
-| `emitFile`                  | `boolean`            | `true`                 | If `true`, emits a file (writes a file to the filesystem). If `false`, the loader will still return a object with the public URI but will not emit the file. It is often useful to disable this option for server-side packages.                                                      |
+| Option                                  | Type                  | Default                | Description                                                                                                                                                                                                                                                                                 |
+| --------------------------------------- | --------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`                                  | `string`              | `[hash]-[width].[ext]` | Filename template for output files.                                                                                                                                                                                                                                                         |
+| `outputPath`                            | `string \| Function`  | `undefined`            | Configure a custom output path for your file                                                                                                                                                                                                                                                |
+| `publicPath`                            | `string \| Function`  | `undefined`            | Configure a custom public path for your file.                                                                                                                                                                                                                                               |
+| `context`                               | `string`              | `this.options.context` | Custom file context, defaults to webpack.config.js [context](https://webpack.js.org/configuration/entry-context/#context)                                                                                                                                                                   |
+| `sizes`                                 | `array`               | _original size_        | Specify all widths you want to use; if a specified size exceeds the original image's width, the latter will be used (i.e. images won't be scaled up). You may also declare a default `sizes` array in the loader options in your `webpack.config.js`.                                       |
+| `size`                                  | `integer`             | _original size_        | Specify one width you want to use; if the specified size exceeds the original image's width, the latter will be used (i.e. images won't be scaled up)                                                                                                                                       |
+| `min`                                   | `integer`             |                        | As an alternative to manually specifying `sizes`, you can specify `min`, `max` and `steps`, and the sizes will be generated for you.                                                                                                                                                        |
+| `max`                                   | `integer`             |                        | See `min` above                                                                                                                                                                                                                                                                             |
+| `steps`                                 | `integer`             | `4`                    | Configure the number of images generated between `min` and `max` (inclusive)                                                                                                                                                                                                                |
+| `quality`                               | `integer`             | `85`                   | JPEG and WEBP compression quality                                                                                                                                                                                                                                                           |
+| `format`                                | `string`              | _original format_      | Either `png` or `jpg`; use to convert to another format. `webp` and `avif` is also supported, but only by the sharp adapter                                                                                                                                                                 |
+| `placeholder`                           | `boolean`             | `false`                | A true or false value to specify wether to output a placeholder image as a data URI                                                                                                                                                                                                         |
+| `placeholderSize`                       | `integer`             | `40`                   | A number value specifying the width of the placeholder image, if enabled with the option above                                                                                                                                                                                              |
+| `adapter`                               | `Adapter`             | JIMP                   | Specify which adapter to use. Can only be specified in the loader options.                                                                                                                                                                                                                  |
+| `disable`                               | `boolean`             | `false`                | Disable processing of images by this loader (useful in development). `srcSet` and other attributes will still be generated but only for the original size. Note that the `width` and `height` attributes will both be set to `100` but the image will retain its original dimensions.       |
+| **[`esModule`](#esmodule)**             | `boolean`             | `false`                | Use ES modules syntax.                                                                                                                                                                                                                                                                      |
+| `emitFile`                              | `boolean`             | `true`                 | If `true`, emits a file (writes a file to the filesystem). If `false`, the loader will still return a object with the public URI but will not emit the file. It is often useful to disable this option for server-side packages.                                                            |
+| **[`cacheDirectory`](#cachedirectory)** | `string` or `boolean` | `false`                | Experimental: If `true`, this will cache the result object but not the image files. The images are only produced once, when they are not found in the results object cache, or when the options change (cache key). For Development you can set query parameter to `?cacheDirectory=false`. |
 
 #### Adapter-specific options
 
@@ -177,10 +211,8 @@ More here https://github.com/webpack/loader-utils#parsequery
 ##### sharp
 
 - `background: string` — Background fill when converting transparent to opaque images. E.g. `#FFFFFF` or `%23FFFFFF` for webpack > 5
-
 - `format: webp` — Conversion to the `image/webp` format. Recognizes the `quality` option.
 - `format: avif` — Conversion to the `image/avif` format. Recognizes the `quality` option.
-
 - `progressive: boolean` - Use progressive (interlace) scan for `image/jpeg` format.
 - `rotate: number` - Rotates image [more here](https://sharp.pixelplumbing.com/api-operation#rotate)
 
@@ -211,6 +243,38 @@ module.exports = {
     ]
   },
 }
+```
+
+### `cacheDirectory`
+
+Type: `Boolean` or `string`
+Default: `false`
+
+Experimental: If `true`, this will cache the result object but not the image files. The images are only produced once, when they are not found in the results object cache, or when the options change (cache key). For Development you can set query parameter to individual images by using `?cacheDirectory=false`.
+
+Default cache directory might be `.node_modules/.cache/responsive-loader`
+
+```js
+module.exports = {
+  module: {
+    rules: [
+      {
+        test: /\.(jpe?g|png)$/i,
+        use: [
+          {
+            loader: 'responsive-loader',
+            options: {
+              esModule: true,
+              cacheDirectory: true,
+              publicPath: '/_next',
+              name: 'static/media/[name]-[hash:7]-[width].[ext]',
+            },
+          },
+        ],
+      },
+    ],
+  },
+};
 ```
 
 ### `esModule`
@@ -275,17 +339,19 @@ In your webpack config, require your adapter
 
 - Doesn't support `1x`, `2x` sizes, but you probably don't need it.
 
-## See also
+## Usage Examples
 
-- Inspired by [resize-image-loader](https://github.com/Levelmoney/resize-image-loader), but simpler and without dependency on ImageMagick
+### Next.js
 
-[npm]: https://img.shields.io/npm/v/responsive-loader.svg
-[npm-url]: https://npmjs.com/package/responsive-loader
+- https://github.com/dazuaz/responsive-loader-example
+
+### Pug
+
+- [How to use responsive-loader with Pug](https://webdiscus.github.io/pug-plugin/responsive-image/). Thanks to the awesome [pug-loader](https://webdiscus.github.io/pug-plugin/hello-world/).
+
+Please submit your own example to add here
+
 [node]: https://img.shields.io/node/v/responsive-loader.svg
 [node-url]: https://nodejs.org
-[deps]: https://david-dm.org/dazuaz/responsive-loader.svg
-[deps-url]: https://david-dm.org/dazuaz/responsive-loader
 [travis]: https://travis-ci.com/dazuaz/responsive-loader.svg?branch=master
 [travis-url]: https://travis-ci.com/dazuaz/responsive-loader
-[size]: https://packagephobia.now.sh/badge?p=responsive-loader
-[size-url]: https://packagephobia.now.sh/result?p=responsive-loader

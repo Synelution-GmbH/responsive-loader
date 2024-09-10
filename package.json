@@ -4,13 +4,17 @@
   "description": "A webpack loader for responsive images",
   "main": "lib/cjs.js",
   "engines": {
-    "node": ">= 10.13.0"
+    "node": ">= 12.22.1"
   },
   "scripts": {
-    "build": "tsc && cp ./src/cjs.js ./lib",
+    "build": "tsc",
     "lint": "eslint",
-    "test:clean": "find -E test/**/build/ -regex '.*/*.(avif|jpg|webp|png|js)' -delete",
-    "test": "npm run build && npm run test:clean && webpack --config=./test/jimp/webpack.config.js && webpack --config=./test/sharp/webpack.config.js && webpack --config=./test/cache/webpack.config.js && jest"
+    "test:clean": "find test/**/build/ -name '*.jpg' -o -name '*.png' -o -name '*.avif' -o -name '*.webp' -o -name '*.jpeg' -o -name '*.js' | xargs rm -f",
+    "test": "npm run build && npm run test:clean && webpack --config=./test/jimp/webpack.config.js && webpack --config=./test/sharp/webpack.config.js && jest"
+  },
+  "np": {
+    "yarn": false,
+    "contents": "lib"
   },
   "files": [
     "lib",
@@ -37,7 +41,7 @@
   },
   "homepage": "https://github.com/dazuaz/responsive-loader",
   "peerDependencies": {
-    "webpack": "^4.0.0 || ^5.0.0"
+    "webpack": "^5.73.0"
   },
   "peerDependenciesMeta": {
     "jimp": {
@@ -48,31 +52,33 @@
     }
   },
   "dependencies": {
-    "find-cache-dir": "^3.3.1",
-    "loader-utils": "^2.0.0",
-    "schema-utils": "^3.0.0"
+    "@types/node": "^18.11.9",
+    "find-cache-dir": "^3.3.2",
+    "json5": "^2.2.1",
+    "loader-utils": "^3.2.1",
+    "make-dir": "^3.1.0",
+    "schema-utils": "^4.0.0"
   },
   "devDependencies": {
-    "@babel/core": "^7.12.10",
-    "@babel/preset-env": "^7.12.11",
-    "@types/find-cache-dir": "^3.2.0",
-    "@types/json-schema": "^7.0.6",
-    "@types/loader-utils": "^2.0.1",
-    "@types/node": "^14.14.20",
-    "@types/sharp": "^0.27.0",
-    "@types/webpack": "^4.41.25",
-    "@typescript-eslint/eslint-plugin": "^4.12.0",
-    "@typescript-eslint/parser": "^4.12.0",
-    "babel-jest": "^26.6.3",
-    "eslint": "^7.17.0",
-    "jest": "^26.6.3",
-    "jimp": "^0.16.1",
-    "prettier": "^2.2.1",
-    "prettier-eslint": "^12.0.0",
-    "sharp": "^0.27.0",
-    "typescript": "^4.1.3",
-    "webpack": "^4.44.2",
-    "webpack-cli": "^4.3.1"
+    "@babel/core": "^7.20.2",
+    "@babel/preset-env": "^7.20.2",
+    "@types/find-cache-dir": "^3.2.1",
+    "@types/jest": "^29.2.3",
+    "@types/json-schema": "^7.0.11",
+    "@types/sharp": "^0.31.0",
+    "@types/webpack": "^5.28.0",
+    "@typescript-eslint/eslint-plugin": "^5.43.0",
+    "@typescript-eslint/parser": "^5.43.0",
+    "babel-jest": "^29.3.1",
+    "eslint": "^8.27.0",
+    "jest": "^29.3.1",
+    "jimp": "^0.16.2",
+    "prettier": "^2.7.1",
+    "prettier-eslint": "^15.0.1",
+    "sharp": "^0.31.2",
+    "typescript": "^4.9.3",
+    "webpack": "^5.75.0",
+    "webpack-cli": "^5.0.0"
   },
   "jest": {
     "testEnvironment": "node"
